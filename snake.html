@@ -114,12 +114,12 @@
 </head>
 <body>
   <h1>Snake</h1>
-  <div id="score">Punkte: 0</div>
+  <div id="score">Diamanten: 0</div>
   <div class="board-wrap">
     <canvas id="game" width="400" height="400"></canvas>
     <div id="overlay">
       <h2 id="overlayTitle">Bereit?</h2>
-      <p id="overlayText">Iss die Punkte, weiche den Wänden und dir selbst aus!</p>
+      <p id="overlayText">Führe das goldene Polo-Pony, sammle Diamanten und weiche Wänden &amp; dir selbst aus!</p>
       <button id="startBtn">Start</button>
     </div>
   </div>
@@ -139,7 +139,8 @@
   const CELL = canvas.width / GRID;
   const SPEED = 110;            // ms pro Schritt
 
-  const COLORS = ['#39ff14', '#00ffff', '#ff1493', '#ffff00', '#b026ff'];
+  // Goldtöne für die Schlange
+  const COLORS = ['#fff3b0', '#ffd700', '#f4c430', '#e6b800', '#d4af37'];
 
   let snake, dir, nextDir, food, score, loop, running, paused;
 
@@ -163,7 +164,7 @@
   }
 
   function updateScore() {
-    scoreEl.textContent = 'Punkte: ' + score;
+    scoreEl.textContent = 'Diamanten: ' + score;
   }
 
   function step() {
@@ -196,16 +197,9 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Nahrung (pulsierendes gelb-pink)
+    // Nahrung: funkelnder Diamant
     const t = (Date.now() % 600) / 600;
-    ctx.save();
-    ctx.shadowColor = '#ffff00';
-    ctx.shadowBlur = 15 + Math.sin(t * Math.PI * 2) * 6;
-    ctx.fillStyle = '#ffff00';
-    ctx.beginPath();
-    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL / 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawDiamond(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL / 2.2, t);
 
     // Schlange (Regenbogen-Segmente)
     snake.forEach((seg, i) => {
@@ -218,17 +212,132 @@
       ctx.fill();
       ctx.restore();
 
-      // Augen am Kopf
+      // Polo-Ralph-Lauren-Pony auf dem Kopf
       if (i === 0) {
-        ctx.fillStyle = '#05010f';
-        const ex = seg.x * CELL, ey = seg.y * CELL;
-        const off = 5;
-        ctx.beginPath();
-        ctx.arc(ex + CELL / 2 - off, ey + CELL / 2 - off, 2, 0, Math.PI * 2);
-        ctx.arc(ex + CELL / 2 + off, ey + CELL / 2 - off, 2, 0, Math.PI * 2);
-        ctx.fill();
+        drawPolo(seg.x * CELL + CELL / 2, seg.y * CELL + CELL / 2, CELL * 0.85);
       }
     });
+  }
+
+  // Funkelnder Diamant
+  function drawDiamond(cx, cy, r, t) {
+    const pulse = 1 + Math.sin(t * Math.PI * 2) * 0.06;
+    r *= pulse;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 18 + Math.sin(t * Math.PI * 2) * 8;
+
+    const top = -r, bottom = r, half = r * 0.75, girdle = -r * 0.35;
+    // Körper mit Verlauf
+    const grad = ctx.createLinearGradient(0, top, 0, bottom);
+    grad.addColorStop(0, '#e0ffff');
+    grad.addColorStop(0.5, '#00e5ff');
+    grad.addColorStop(1, '#0077b6');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, top);
+    ctx.lineTo(half, girdle);
+    ctx.lineTo(0, bottom);
+    ctx.lineTo(-half, girdle);
+    ctx.closePath();
+    ctx.fill();
+
+    // Facetten-Linien
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-half, girdle); ctx.lineTo(half, girdle);
+    ctx.moveTo(0, top); ctx.lineTo(0, bottom);
+    ctx.moveTo(0, top); ctx.lineTo(-half * 0.45, girdle);
+    ctx.moveTo(0, top); ctx.lineTo(half * 0.45, girdle);
+    ctx.moveTo(-half, girdle); ctx.lineTo(0, bottom);
+    ctx.moveTo(half, girdle); ctx.lineTo(0, bottom);
+    ctx.stroke();
+
+    // Glanzpunkt
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.arc(-r * 0.2, -r * 0.35, r * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Stilisierter Polo-Reiter (Ralph-Lauren-Silhouette)
+  function drawPolo(cx, cy, s) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(s / 100, s / 100);
+    ctx.translate(-50, -50);
+    ctx.fillStyle = '#05010f';
+    ctx.strokeStyle = '#05010f';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // Pferdekörper
+    ctx.beginPath();
+    ctx.moveTo(24, 66);
+    ctx.quadraticCurveTo(20, 54, 34, 52);
+    ctx.quadraticCurveTo(50, 50, 66, 52);
+    ctx.quadraticCurveTo(80, 53, 80, 62);
+    ctx.lineTo(78, 64);
+    ctx.quadraticCurveTo(70, 60, 60, 61);
+    ctx.quadraticCurveTo(44, 62, 34, 63);
+    ctx.quadraticCurveTo(28, 64, 26, 68);
+    ctx.closePath();
+    ctx.fill();
+
+    // Hals & Kopf des Pferds
+    ctx.beginPath();
+    ctx.moveTo(76, 54);
+    ctx.quadraticCurveTo(84, 46, 88, 36);
+    ctx.lineTo(92, 34);
+    ctx.quadraticCurveTo(90, 46, 84, 55);
+    ctx.closePath();
+    ctx.fill();
+
+    // Beine (galoppierend)
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(32, 63); ctx.lineTo(26, 78);
+    ctx.moveTo(40, 63); ctx.lineTo(44, 80);
+    ctx.moveTo(62, 62); ctx.lineTo(58, 80);
+    ctx.moveTo(70, 61); ctx.lineTo(76, 77);
+    ctx.stroke();
+
+    // Schweif
+    ctx.beginPath();
+    ctx.moveTo(24, 56);
+    ctx.quadraticCurveTo(14, 56, 12, 70);
+    ctx.lineTo(16, 70);
+    ctx.quadraticCurveTo(20, 60, 26, 60);
+    ctx.closePath();
+    ctx.fill();
+
+    // Reiter
+    ctx.beginPath();
+    ctx.arc(50, 34, 6, 0, Math.PI * 2); // Kopf
+    ctx.fill();
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(50, 40); ctx.lineTo(48, 54); // Körper
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(49, 44); ctx.lineTo(64, 30); // erhobener Arm mit Schläger
+    ctx.stroke();
+
+    // Poloschläger
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(64, 30); ctx.lineTo(72, 18);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(70, 18); ctx.lineTo(76, 20);
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   function roundRect(x, y, w, h, r) {
