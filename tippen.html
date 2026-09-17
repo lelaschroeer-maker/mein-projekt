@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10-Finger-Schreibtrainer</title>
+<style>
+  :root {
+    --bg: #0d0221;
+    --panel: #170a33;
+    --panel-2: #1f0f45;
+    --accent: #00ffff;
+    --accent-2: #b026ff;
+    --good: #39ff14;
+    --bad: #ff1e5a;
+    --text: #ece7ff;
+    --muted: #9a8fc7;
+    /* Fingerfarben */
+    --f-lp: #ff6b6b;   /* linker kleiner Finger */
+    --f-lr: #ffa94d;   /* linker Ringfinger */
+    --f-lm: #ffd43b;   /* linker Mittelfinger */
+    --f-li: #69db7c;   /* linker Zeigefinger */
+    --f-th: #4dabf7;   /* Daumen */
+    --f-ri: #63e6be;   /* rechter Zeigefinger */
+    --f-rm: #74c0fc;   /* rechter Mittelfinger */
+    --f-rr: #b197fc;   /* rechter Ringfinger */
+    --f-rp: #f783ac;   /* rechter kleiner Finger */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% -10%, #1a0533, var(--bg));
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: var(--text);
+    padding: 24px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 6vw, 3rem);
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-align: center;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--good));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle { color: var(--muted); text-align: center; margin-top: -10px; max-width: 640px; }
+
+  .card {
+    width: 100%;
+    max-width: 960px;
+    background: var(--panel);
+    border: 1px solid rgba(176, 38, 255, 0.25);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+
+  /* Lektionen */
+  .lessons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .lesson-btn {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid rgba(0,255,255,0.2);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .lesson-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .lesson-btn.active {
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    color: #0d0221;
+    font-weight: 700;
+    border-color: transparent;
+  }
+
+  /* Statistik */
+  .stats { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .stat {
+    flex: 1 1 120px;
+    min-width: 110px;
+    background: var(--panel-2);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat .value { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+  .stat .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Text-Anzeige */
+  .text-display {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: clamp(1.1rem, 3.2vw, 1.6rem);
+    line-height: 2;
+    letter-spacing: 1px;
+    word-break: break-word;
+    background: #0a0119;
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 100px;
+    user-select: none;
+  }
+  .char { position: relative; padding: 0 1px; border-radius: 3px; transition: background 0.1s; }
+  .char.correct { color: var(--good); }
+  .char.wrong { color: #fff; background: var(--bad); border-radius: 3px; }
+  .char.wrong.space { background: var(--bad); }
+  .char.current {
+    background: var(--accent);
+    color: #0d0221;
+    box-shadow: 0 0 12px var(--accent);
+    animation: blink 1s steps(2, start) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.55; } }
+  .char.pending { color: var(--muted); }
+
+  /* verstecktes Eingabefeld */
+  #hidden-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    left: -9999px;
+  }
+
+  .hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    min-height: 1.2em;
+  }
+  .hint b { color: var(--accent); }
+
+  /* Tastatur */
+  .keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .kb-row { display: flex; gap: 6px; }
+  .key {
+    min-width: 40px;
+    height: 44px;
+    padding: 0 8px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+    transition: all 0.08s;
+  }
+  .key.wide { min-width: 70px; }
+  .key.space { min-width: 240px; }
+  .key.home::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 3px;
+    background: currentColor;
+    border-radius: 2px;
+    transform: translateY(14px);
+    opacity: 0.6;
+  }
+  .key { position: relative; }
+  .key.next {
+    outline: 3px solid var(--accent);
+    box-shadow: 0 0 16px var(--accent);
+    transform: translateY(-2px);
+    z-index: 2;
+  }
+  .key.pressed { transform: translateY(2px) scale(0.96); filter: brightness(1.4); }
+
+  /* Fingerfarben auf Tasten */
+  .f-lp { color: var(--f-lp); }
+  .f-lr { color: var(--f-lr); }
+  .f-lm { color: var(--f-lm); }
+  .f-li { color: var(--f-li); }
+  .f-th { color: var(--f-th); }
+  .f-ri { color: var(--f-ri); }
+  .f-rm { color: var(--f-rm); }
+  .f-rr { color: var(--f-rr); }
+  .f-rp { color: var(--f-rp); }
+
+  /* Fingerlegende */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; font-size: 0.78rem; }
+  .legend span { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    color: #0d0221;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 22px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.secondary { background: var(--panel-2); color: var(--text); border: 1px solid rgba(0,255,255,0.25); }
+
+  .done-banner {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--good);
+    display: none;
+  }
+  .done-banner.show { display: block; }
+
+  @media (max-width: 560px) {
+    .key { min-width: 30px; height: 38px; font-size: 0.72rem; padding: 0 4px; }
+    .key.wide { min-width: 48px; }
+    .key.space { min-width: 150px; }
+  }
+</style>
+</head>
+<body>
+  <h1>⌨️ 10-Finger-Schreibtrainer</h1>
+  <p class="subtitle">Legen Sie die Finger auf die Grundreihe <b>a&nbsp;s&nbsp;d&nbsp;f</b> und <b>j&nbsp;k&nbsp;l&nbsp;ö</b>. Die farbige Taste zeigt Ihnen, welcher Finger als Nächstes dran ist. Schauen Sie möglichst nicht auf die Tastatur!</p>
+
+  <div class="card">
+    <div class="lessons" id="lessons"></div>
+  </div>
+
+  <div class="card">
+    <div class="stats">
+      <div class="stat"><div class="value" id="stat-wpm">0</div><div class="label">Wörter/Min</div></div>
+      <div class="stat"><div class="value" id="stat-acc">100%</div><div class="label">Genauigkeit</div></div>
+      <div class="stat"><div class="value" id="stat-time">0s</div><div class="label">Zeit</div></div>
+      <div class="stat"><div class="value" id="stat-err">0</div><div class="label">Fehler</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="text-display" id="text-display" tabindex="0"></div>
+    <input id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <p class="hint" id="hint"></p>
+    <div class="done-banner" id="done-banner"></div>
+    <div class="controls">
+      <button class="btn" id="restart-btn">Neu starten</button>
+      <button class="btn secondary" id="new-btn">Nächste Übung</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="keyboard" id="keyboard"></div>
+    <div class="legend" style="margin-top:14px">
+      <span><i style="background:var(--f-lp)"></i>Kl. Finger li.</span>
+      <span><i style="background:var(--f-lr)"></i>Ringfinger li.</span>
+      <span><i style="background:var(--f-lm)"></i>Mittelfinger li.</span>
+      <span><i style="background:var(--f-li)"></i>Zeigefinger li.</span>
+      <span><i style="background:var(--f-th)"></i>Daumen</span>
+      <span><i style="background:var(--f-ri)"></i>Zeigefinger re.</span>
+      <span><i style="background:var(--f-rm)"></i>Mittelfinger re.</span>
+      <span><i style="background:var(--f-rr)"></i>Ringfinger re.</span>
+      <span><i style="background:var(--f-rp)"></i>Kl. Finger re.</span>
+    </div>
+  </div>
+
+<script>
+/* ---------- Lektionsinhalte (deutsche Tastatur QWERTZ) ---------- */
+const LESSONS = {
+  "Grundreihe":       ["asdf jklö asdf jklö", "fjfj dkdk slsl aöaö", "das fall salat jökl", "fad las fass all haus", "alle salate falls das"],
+  "Obere Reihe":      ["qwert zuiop", "wer zieht wir", "route power query", "quer tor puzzle wiptz", "eine reise werte zeit"],
+  "Untere Reihe":     ["yxcvb nm,.", "max byte comic", "manch by video vom", "cyan navy commit box", "nebel cyan xylophon vom"],
+  "Wörter üben":      ["haus baum katze hund maus", "leben lieben lernen laufen", "der die das ein eine einen", "schnell langsam gross klein", "morgen heute gestern immer"],
+  "Umlaute & ß":      ["ä ö ü ß äöü", "gruß mäßig süß über", "schön möglich für müde", "größe fühlen wärme spät", "straße füße hände bäume"],
+  "Satzzeichen":      ["hallo, wie geht es dir?", "das ist gut. sehr gut!", "warum nicht? na klar.", "eins, zwei, drei; los!", "punkt, komma - strich."],
+  "Ganze Sätze":      ["Der schnelle Fuchs springt.", "Übung macht den Meister.", "Zehn Finger tippen flott.", "Franz jagt im Taxi quer.", "Viktor schaut zwölf Boxern zu."],
+  "Zahlenreihe":      ["1234 5678 90", "12 34 56 78 90", "tel 0176 12 34 567", "jahr 2026 monat 09", "3 x 7 = 21 und 8 + 5"]
+};
+
+/* ---------- Tastaturbelegung QWERTZ + Fingerzuordnung ---------- */
+const FINGER_CLASS = {
+  lp:'f-lp', lr:'f-lr', lm:'f-lm', li:'f-li', th:'f-th', ri:'f-ri', rm:'f-rm', rr:'f-rr', rp:'f-rp'
+};
+// Jede Taste: Beschriftung + Fingercode + optional Breite/Markierung
+const KB_LAYOUT = [
+  [
+    {l:"^",f:"lp"},{l:"1",f:"lp"},{l:"2",f:"lr"},{l:"3",f:"lm"},{l:"4",f:"li"},{l:"5",f:"li"},
+    {l:"6",f:"ri"},{l:"7",f:"ri"},{l:"8",f:"rm"},{l:"9",f:"rr"},{l:"0",f:"rp"},{l:"ß",f:"rp"},{l:"´",f:"rp"},
+    {l:"⌫",f:"rp",w:"wide"}
+  ],
+  [
+    {l:"Tab",f:"lp",w:"wide"},
+    {l:"Q",f:"lp"},{l:"W",f:"lr"},{l:"E",f:"lm"},{l:"R",f:"li"},{l:"T",f:"li"},
+    {l:"Z",f:"ri"},{l:"U",f:"ri"},{l:"I",f:"rm"},{l:"O",f:"rr"},{l:"P",f:"rp"},{l:"Ü",f:"rp"},{l:"+",f:"rp"}
+  ],
+  [
+    {l:"⇪",f:"lp",w:"wide"},
+    {l:"A",f:"lp",home:true},{l:"S",f:"lr",home:true},{l:"D",f:"lm",home:true},{l:"F",f:"li",home:true},{l:"G",f:"li"},
+    {l:"H",f:"ri"},{l:"J",f:"ri",home:true},{l:"K",f:"rm",home:true},{l:"L",f:"rr",home:true},{l:"Ö",f:"rp",home:true},{l:"Ä",f:"rp"},{l:"#",f:"rp"}
+  ],
+  [
+    {l:"⇧",f:"lp",w:"wide"},
+    {l:"<",f:"lp"},{l:"Y",f:"lp"},{l:"X",f:"lr"},{l:"C",f:"lm"},{l:"V",f:"li"},{l:"B",f:"li"},
+    {l:"N",f:"ri"},{l:"M",f:"ri"},{l:",",f:"rm"},{l:".",f:"rr"},{l:"-",f:"rp"},{l:"⇧",f:"rp",w:"wide"}
+  ],
+  [
+    {l:"Leer",f:"th",w:"space"}
+  ]
+];
+
+// Zeichen -> Fingercode (für Hinweis & Taste), Kleinbuchstaben
+const CHAR_FINGER = {};
+KB_LAYOUT.forEach(row => row.forEach(k => {
+  const key = k.l.toLowerCase();
+  if (key.length === 1) CHAR_FINGER[key] = k.f;
+}));
+const FINGER_NAME = {
+  lp:"linker kleiner Finger", lr:"linker Ringfinger", lm:"linker Mittelfinger", li:"linker Zeigefinger",
+  th:"Daumen", ri:"rechter Zeigefinger", rm:"rechter Mittelfinger", rr:"rechter Ringfinger", rp:"rechter kleiner Finger"
+};
+
+/* ---------- Zustand ---------- */
+let currentLesson = "Grundreihe";
+let currentText = "";
+let pos = 0;
+let errors = 0;
+let typedTotal = 0;
+let startTime = null;
+let timerId = null;
+let finished = false;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Aufbau Lektionsknöpfe ---------- */
+function buildLessons() {
+  const c = $("lessons");
+  c.innerHTML = "";
+  Object.keys(LESSONS).forEach(name => {
+    const b = document.createElement("button");
+    b.className = "lesson-btn" + (name === currentLesson ? " active" : "");
+    b.textContent = name;
+    b.onclick = () => { currentLesson = name; buildLessons(); newExercise(); };
+    c.appendChild(b);
+  });
+}
+
+/* ---------- Aufbau Tastatur ---------- */
+const keyEls = {}; // zeichen(lowercase) -> element
+function buildKeyboard() {
+  const kb = $("keyboard");
+  kb.innerHTML = "";
+  KB_LAYOUT.forEach(row => {
+    const r = document.createElement("div");
+    r.className = "kb-row";
+    row.forEach(k => {
+      const el = document.createElement("div");
+      el.className = "key " + FINGER_CLASS[k.f] + (k.w ? " " + k.w : "") + (k.home ? " home" : "");
+      el.textContent = k.l;
+      const key = k.l.toLowerCase();
+      if (key.length === 1) keyEls[key] = el;
+      if (k.l === "Leer") keyEls[" "] = el;
+      r.appendChild(el);
+    });
+    kb.appendChild(r);
+  });
+}
+
+/* ---------- Übung starten ---------- */
+function pickText() {
+  const arr = LESSONS[currentLesson];
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function newExercise() {
+  currentText = pickText();
+  pos = 0; errors = 0; typedTotal = 0; startTime = null; finished = false;
+  clearInterval(timerId); timerId = null;
+  $("done-banner").classList.remove("show");
+  renderText();
+  updateStats();
+  highlightNext();
+  $("hidden-input").value = "";
+  focusInput();
+}
+
+function restart() { newExercise(); }
+
+/* ---------- Text rendern ---------- */
+function renderText() {
+  const d = $("text-display");
+  d.innerHTML = "";
+  for (let i = 0; i < currentText.length; i++) {
+    const s = document.createElement("span");
+    s.className = "char pending";
+    const ch = currentText[i];
+    s.textContent = ch === " " ? " " : ch;
+    if (ch === " ") s.classList.add("space");
+    d.appendChild(s);
+  }
+}
+
+function updateCharClasses() {
+  const chars = $("text-display").children;
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    c.classList.remove("correct","wrong","current","pending");
+    if (i < pos) {
+      c.classList.add(c.dataset.wrong === "1" ? "wrong" : "correct");
+    } else if (i === pos) {
+      c.classList.add("current");
+    } else {
+      c.classList.add("pending");
+    }
+  }
+}
+
+/* ---------- Nächste Taste & Finger hervorheben ---------- */
+function clearKeyHighlight() {
+  Object.values(keyEls).forEach(e => e.classList.remove("next"));
+}
+function highlightNext() {
+  clearKeyHighlight();
+  if (pos >= currentText.length) { $("hint").textContent = ""; return; }
+  const ch = currentText[pos].toLowerCase();
+  const el = keyEls[ch];
+  if (el) el.classList.add("next");
+  const f = CHAR_FINGER[ch] || (ch === " " ? "th" : null);
+  if (f) {
+    const shown = currentText[pos] === " " ? "Leertaste" : "»" + currentText[pos] + "«";
+    $("hint").innerHTML = `Nächstes Zeichen ${shown} → <b>${FINGER_NAME[f]}</b>`;
+  } else {
+    $("hint").textContent = "";
+  }
+}
+
+/* ---------- Statistik ---------- */
+function updateStats() {
+  const acc = typedTotal === 0 ? 100 : Math.max(0, Math.round(((typedTotal - errors) / typedTotal) * 100));
+  const secs = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const minutes = secs / 60;
+  // WPM: 5 Anschläge = 1 Wort (Standard)
+  const wpm = minutes > 0 ? Math.round((pos / 5) / minutes) : 0;
+  $("stat-wpm").textContent = wpm;
+  $("stat-acc").textContent = acc + "%";
+  $("stat-time").textContent = Math.round(secs) + "s";
+  $("stat-err").textContent = errors;
+}
+
+function startTimer() {
+  if (timerId) return;
+  timerId = setInterval(updateStats, 250);
+}
+
+/* ---------- Eingabe verarbeiten ---------- */
+function handleKey(e) {
+  if (finished) return;
+  // Steuertasten ignorieren (außer Backspace)
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    if (pos > 0) {
+      pos--;
+      const chars = $("text-display").children;
+      chars[pos].dataset.wrong = "";
+      updateCharClasses();
+      highlightNext();
+    }
+    return;
+  }
+  if (e.key.length !== 1) return; // Shift, Alt, Pfeile etc.
+  e.preventDefault();
+
+  if (!startTime) { startTime = Date.now(); startTimer(); }
+
+  const expected = currentText[pos];
+  typedTotal++;
+  const chars = $("text-display").children;
+
+  if (e.key === expected) {
+    chars[pos].dataset.wrong = "";
+  } else {
+    errors++;
+    chars[pos].dataset.wrong = "1";
+    flashWrong();
+  }
+  pos++;
+
+  // gedrückte Taste visuell zeigen
+  pressKey(e.key.toLowerCase());
+
+  updateCharClasses();
+  updateStats();
+
+  if (pos >= currentText.length) {
+    finishExercise();
+  } else {
+    highlightNext();
+  }
+}
+
+function pressKey(ch) {
+  const el = keyEls[ch];
+  if (!el) return;
+  el.classList.add("pressed");
+  setTimeout(() => el.classList.remove("pressed"), 120);
+}
+
+function flashWrong() {
+  document.body.animate(
+    [{ filter: "none" }, { filter: "brightness(1.15) hue-rotate(-10deg)" }, { filter: "none" }],
+    { duration: 180 }
+  );
+}
+
+function finishExercise() {
+  finished = true;
+  clearInterval(timerId); timerId = null;
+  updateStats();
+  clearKeyHighlight();
+  const acc = $("stat-acc").textContent;
+  const wpm = $("stat-wpm").textContent;
+  const banner = $("done-banner");
+  let msg = `✅ Geschafft! ${wpm} WPM bei ${acc} Genauigkeit.`;
+  if (errors === 0) msg += " Fehlerfrei – hervorragend!";
+  banner.textContent = msg;
+  banner.classList.add("show");
+}
+
+/* ---------- Fokus-Handling ---------- */
+function focusInput() { $("hidden-input").focus({ preventScroll: true }); }
+
+$("text-display").addEventListener("click", focusInput);
+$("hidden-input").addEventListener("keydown", handleKey);
+// Falls Fokus verloren geht, bei Tastendruck zurückholen
+document.addEventListener("keydown", (e) => {
+  if (document.activeElement !== $("hidden-input") &&
+      !["Restart","New"].includes(e.target.id) &&
+      e.target.tagName !== "BUTTON") {
+    focusInput();
+  }
+});
+
+$("restart-btn").onclick = () => { restart(); };
+$("new-btn").onclick = () => { newExercise(); };
+
+/* ---------- Start ---------- */
+buildLessons();
+buildKeyboard();
+newExercise();
+</script>
+</body>
+</html>
